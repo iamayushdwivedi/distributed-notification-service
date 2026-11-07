@@ -13,13 +13,17 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 320)
     private String recipient;
 
+    @Column(nullable = false, length = 2000)
     private String message;
 
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private NotificationChannel channel;
 
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private NotificationStatus status;
 

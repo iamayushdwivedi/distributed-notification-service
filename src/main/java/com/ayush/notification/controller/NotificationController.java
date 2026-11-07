@@ -8,7 +8,12 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.ayush.notification.dto.NotificationRequest;
-import com.ayush.notification.entity.Notification;
+import com.ayush.notification.dto.NotificationResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.SortDefault;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -25,8 +30,20 @@ public class NotificationController {
         return notificationService.getServiceStatus();
     }
 
+    @GetMapping
+    public Page<NotificationResponse> getAllNotifications(
+            @PageableDefault
+            @SortDefault.SortDefaults({
+                    @SortDefault(sort = "createdAt", direction = Sort.Direction.DESC),
+                    @SortDefault(sort = "id", direction = Sort.Direction.DESC)
+            })
+            Pageable pageable) {
+
+        return notificationService.getAllNotifications(pageable);
+    }
+
     @PostMapping
-    public Notification createNotification(
+    public NotificationResponse createNotification(
             @Valid @RequestBody NotificationRequest request) {
         return notificationService.createNotification(request);
     }
