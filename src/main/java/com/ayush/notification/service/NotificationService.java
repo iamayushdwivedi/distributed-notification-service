@@ -1,5 +1,6 @@
 package com.ayush.notification.service;
 
+import com.ayush.notification.producer.NotificationEventProducer;
 import com.ayush.notification.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 import com.ayush.notification.dto.NotificationRequest;
@@ -16,9 +17,11 @@ import java.util.Locale;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationEventProducer notificationEventProducer;
 
-    public NotificationService(NotificationRepository notificationRepository){
+    public NotificationService(NotificationRepository notificationRepository, NotificationEventProducer notificationEventProducer){
         this.notificationRepository = notificationRepository;
+        this.notificationEventProducer = notificationEventProducer;
     }
 
     public String getServiceStatus() {
@@ -45,6 +48,8 @@ public class NotificationService {
 
         // Save entity to database
         Notification savedNotification = notificationRepository.save(notification);
+
+        notificationEventProducer.publishNotificationEvent(savedNotification.getId());
 
         // Map entity to response DTO
         return convertToResponse(savedNotification);

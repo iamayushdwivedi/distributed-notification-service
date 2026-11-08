@@ -1,6 +1,7 @@
 package com.ayush.notification.service;
 
 import com.ayush.notification.repository.NotificationRepository;
+import jakarta.validation.constraints.Min;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -24,12 +25,17 @@ import com.ayush.notification.exception.InvalidNotificationChannelException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
+import com.ayush.notification.producer.NotificationEventProducer;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private NotificationEventProducer notificationEventProducer;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -44,14 +50,21 @@ class NotificationServiceTest {
         request.setChannel("EMAIL");
 
         when(notificationRepository.save(any(Notification.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    Notification saved = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(saved, "id", 42L);
+                    return saved;
+                });
 
         // Act
         NotificationResponse response =
                 notificationService.createNotification(request);
 
         // Assert
-        assertEquals(NotificationStatus.PENDING, response.getStatus());
+        assertEquals(42L, response.getId());
+
+        verify(notificationEventProducer)
+                .publishNotificationEvent(42L);
         ArgumentCaptor<Notification> notificationCaptor =
                 ArgumentCaptor.forClass(Notification.class);
 
@@ -87,5 +100,8 @@ class NotificationServiceTest {
 
         verify(notificationRepository, never())
                 .save(any(Notification.class));
+
+        verify(notificationEventProducer, never())
+                .publishNotificationEvent(any());
     }
 }
