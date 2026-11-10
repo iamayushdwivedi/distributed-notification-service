@@ -42,6 +42,12 @@ public class NotificationEventConsumer {
         System.out.println("Recipient: " + notification.getRecipient());
         System.out.println("Channel: " + notification.getChannel());
 
+        if ("retry-test@example.com".equals(notification.getRecipient())) {
+            throw new RuntimeException(
+                    "Simulated email delivery failure for notification: " + id
+            );
+        }
+
         // Simulate successful delivery
         notification.setStatus(NotificationStatus.SENT);
         notificationRepository.save(notification);

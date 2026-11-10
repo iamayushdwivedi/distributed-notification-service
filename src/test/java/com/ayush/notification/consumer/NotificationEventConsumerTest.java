@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
-import org.mockito.InOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Optional;
 
@@ -61,6 +61,38 @@ class NotificationEventConsumerTest {
 
         assertEquals(
                 NotificationStatus.SENT,
+                notification.getStatus()
+        );
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDeliveryFails() {
+
+        // Arrange: create a notification that triggers our simulated failure
+        Notification notification = new Notification();
+        notification.setStatus(NotificationStatus.PENDING);
+        notification.setRecipient("retry-test@example.com");
+
+        when(notificationRepository.findById(8L))
+                .thenReturn(Optional.of(notification));
+
+        // Act and assert: processing must fail
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> notificationEventConsumer.consumeNotificationEvent("8")
+        );
+
+        assertEquals(
+                "Simulated email delivery failure for notification: 8",
+                exception.getMessage()
+        );
+
+        // The notification was saved as PROCESSING before delivery failed
+        verify(notificationRepository, times(1)).save(notification);
+
+        // It must not be marked SENT
+        assertEquals(
+                NotificationStatus.PROCESSING,
                 notification.getStatus()
         );
     }
