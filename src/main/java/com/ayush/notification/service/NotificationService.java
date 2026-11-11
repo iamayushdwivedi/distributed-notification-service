@@ -12,6 +12,7 @@ import com.ayush.notification.exception.InvalidNotificationChannelException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Locale;
+import org.springframework.cache.annotation.Cacheable;
 
 @Service
 public class NotificationService {
@@ -53,6 +54,16 @@ public class NotificationService {
 
         // Map entity to response DTO
         return convertToResponse(savedNotification);
+    }
+
+    @Cacheable(value = "notifications", key = "#id")
+    public NotificationResponse getNotificationById(Long id) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Notification not found with ID: " + id
+                ));
+
+        return convertToResponse(notification);
     }
 
     public Page<NotificationResponse> getAllNotifications(Pageable pageable) {

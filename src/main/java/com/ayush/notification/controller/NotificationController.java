@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.SortDefault;
 import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -28,6 +30,16 @@ public class NotificationController {
     @GetMapping("/health")
     public String healthCheck() {
         return notificationService.getServiceStatus();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NotificationResponse> getNotificationById(
+            @PathVariable Long id) {
+
+        NotificationResponse response =
+                notificationService.getNotificationById(id);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping

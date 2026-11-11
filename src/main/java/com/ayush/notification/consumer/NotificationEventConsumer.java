@@ -5,15 +5,21 @@ import com.ayush.notification.repository.NotificationRepository;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import com.ayush.notification.enums.NotificationStatus;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 @Component
 public class NotificationEventConsumer {
 
     private final NotificationRepository notificationRepository;
+    private final CacheManager cacheManager;
 
     public NotificationEventConsumer(
-            NotificationRepository notificationRepository) {
+            NotificationRepository notificationRepository,
+            CacheManager cacheManager) {
+
         this.notificationRepository = notificationRepository;
+        this.cacheManager = cacheManager;
     }
 
     @KafkaListener(topics = "notification-events")
@@ -51,6 +57,13 @@ public class NotificationEventConsumer {
         // Simulate successful delivery
         notification.setStatus(NotificationStatus.SENT);
         notificationRepository.save(notification);
+
+        // Remove any outdated notification response from Redis.
+        Cache cache = cacheManager.getCache("notifications");
+
+        if (cache != null) {
+            cache.evict(id);
+        }
 
         System.out.println("Notification sent successfully: " + id);
     }

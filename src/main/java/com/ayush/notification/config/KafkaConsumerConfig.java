@@ -7,10 +7,12 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import com.ayush.notification.entity.Notification;
 import com.ayush.notification.enums.NotificationStatus;
 import com.ayush.notification.repository.NotificationRepository;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 
 @Configuration
 public class KafkaConsumerConfig {
@@ -18,7 +20,8 @@ public class KafkaConsumerConfig {
     @Bean
     public DefaultErrorHandler kafkaErrorHandler(
             KafkaTemplate<String, String> kafkaTemplate,
-            NotificationRepository notificationRepository) {
+            NotificationRepository notificationRepository,
+            CacheManager cacheManager) {
 
         DeadLetterPublishingRecoverer recoverer =
                 new DeadLetterPublishingRecoverer(
@@ -48,6 +51,13 @@ public class KafkaConsumerConfig {
 
             notification.setStatus(NotificationStatus.FAILED);
             notificationRepository.save(notification);
+
+            // Remove any outdated notification response from Redis.
+            Cache cache = cacheManager.getCache("notifications");
+
+            if (cache != null) {
+                cache.evict(notificationId);
+            }
 
             System.out.println("Notification permanently failed: " + notificationId);
 

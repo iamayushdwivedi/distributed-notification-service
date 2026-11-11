@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import java.util.Optional;
 
@@ -20,12 +22,22 @@ class NotificationEventConsumerTest {
     @Mock
     private NotificationRepository notificationRepository;
 
-    @InjectMocks
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private Cache cache;
+
     private NotificationEventConsumer notificationEventConsumer;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        notificationEventConsumer = new NotificationEventConsumer(
+                notificationRepository,
+                cacheManager
+        );
     }
 
     @Test
@@ -52,7 +64,14 @@ class NotificationEventConsumerTest {
         when(notificationRepository.findById(7L))
                 .thenReturn(Optional.of(notification));
 
+        when(cacheManager.getCache("notifications"))
+                .thenReturn(cache);
+
         notificationEventConsumer.consumeNotificationEvent("7");
+
+        verify(cacheManager).getCache("notifications");
+
+        verify(cache).evict(7L);
 
         verify(notificationRepository).findById(7L);
 
