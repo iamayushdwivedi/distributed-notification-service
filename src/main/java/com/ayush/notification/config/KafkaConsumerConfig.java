@@ -12,6 +12,8 @@ import com.ayush.notification.enums.NotificationStatus;
 import com.ayush.notification.repository.NotificationRepository;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientResponseException;
 
 
 @Configuration
@@ -36,7 +38,7 @@ public class KafkaConsumerConfig {
         // Retry twice, waiting 2 seconds between attempts.
         FixedBackOff backOff = new FixedBackOff(2000L, 2L);
 
-        return new DefaultErrorHandler((record, exception) -> {
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler((record, exception) -> {
 
             // First, publish the failed event to the Dead Letter Topic.
             recoverer.accept(record, exception);
@@ -62,5 +64,16 @@ public class KafkaConsumerConfig {
             System.out.println("Notification permanently failed: " + notificationId);
 
         }, backOff);
+
+        // Permanent HTTP errors should go directly to the DLT.
+        errorHandler.addNotRetryableExceptions(
+                HttpClientErrorException.BadRequest.class,
+                HttpClientErrorException.Unauthorized.class,
+                HttpClientErrorException.Forbidden.class,
+                HttpClientErrorException.NotFound.class,
+                HttpClientErrorException.UnprocessableEntity.class
+        );
+
+        return errorHandler;
     }
 }

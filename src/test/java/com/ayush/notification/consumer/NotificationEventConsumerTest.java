@@ -145,4 +145,34 @@ class NotificationEventConsumerTest {
         // Cache should not be evicted on this failure path
         verifyNoInteractions(cacheManager);
     }
+
+    @Test
+    void shouldSkipFailedNotification() {
+
+        // Arrange: notification has already failed
+        Notification notification = new Notification();
+        notification.setStatus(NotificationStatus.FAILED);
+
+        when(notificationRepository.findById(9L))
+                .thenReturn(Optional.of(notification));
+
+        // Act: simulate Kafka receiving the event again
+        notificationEventConsumer.consumeNotificationEvent("9");
+
+        // Assert: notification was fetched
+        verify(notificationRepository).findById(9L);
+
+        // No database update should happen
+        verify(notificationRepository, never())
+                .save(any(Notification.class));
+
+        // No email should be sent
+        verifyNoInteractions(brevoEmailService);
+
+        // No cache changes should happen
+        verifyNoInteractions(cacheManager);
+
+        // Status remains FAILED
+        assertEquals(NotificationStatus.FAILED, notification.getStatus());
+    }
 }

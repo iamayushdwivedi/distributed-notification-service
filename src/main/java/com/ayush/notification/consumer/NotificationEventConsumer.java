@@ -38,9 +38,15 @@ public class NotificationEventConsumer {
                         )
                 );
 
-        // Avoid processing notifications that are already sent
-        if (notification.getStatus() == NotificationStatus.SENT) {
-            System.out.println("Notification already sent: " + id);
+        // Skip notifications that have already reached a terminal state
+        if (notification.getStatus() == NotificationStatus.SENT
+                || notification.getStatus() == NotificationStatus.FAILED) {
+
+            System.out.println(
+                    "Skipping notification " + id
+                            + " because its status is " + notification.getStatus()
+            );
+
             return;
         }
 
