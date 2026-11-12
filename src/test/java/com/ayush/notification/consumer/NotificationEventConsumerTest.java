@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-
+import com.ayush.notification.email.BrevoEmailService;
 import java.util.Optional;
 
 import static org.mockito.Mockito.*;
@@ -28,6 +28,9 @@ class NotificationEventConsumerTest {
     @Mock
     private Cache cache;
 
+    @Mock
+    private BrevoEmailService brevoEmailService;
+
     private NotificationEventConsumer notificationEventConsumer;
 
     @BeforeEach
@@ -36,7 +39,8 @@ class NotificationEventConsumerTest {
 
         notificationEventConsumer = new NotificationEventConsumer(
                 notificationRepository,
-                cacheManager
+                cacheManager,
+                brevoEmailService
         );
     }
 
@@ -69,6 +73,12 @@ class NotificationEventConsumerTest {
 
         notificationEventConsumer.consumeNotificationEvent("7");
 
+        verify(brevoEmailService).sendEmail(
+                notification.getRecipient(),
+                "NotifyFlow - New Notification",
+                notification.getMessage()
+        );
+
         verify(cacheManager).getCache("notifications");
 
         verify(cache).evict(7L);
@@ -87,13 +97,23 @@ class NotificationEventConsumerTest {
     @Test
     void shouldThrowExceptionWhenDeliveryFails() {
 
-        // Arrange: create a notification that triggers our simulated failure
+        // Arrange: create a pending notification
         Notification notification = new Notification();
         notification.setStatus(NotificationStatus.PENDING);
         notification.setRecipient("retry-test@example.com");
+        notification.setMessage("Testing Brevo delivery failure");
 
         when(notificationRepository.findById(8L))
                 .thenReturn(Optional.of(notification));
+
+        // Simulate Brevo API failure
+        doThrow(new RuntimeException("Brevo API unavailable"))
+                .when(brevoEmailService)
+                .sendEmail(
+                        eq("retry-test@example.com"),
+                        eq("NotifyFlow - New Notification"),
+                        eq("Testing Brevo delivery failure")
+                );
 
         // Act and assert: processing must fail
         RuntimeException exception = assertThrows(
@@ -102,17 +122,27 @@ class NotificationEventConsumerTest {
         );
 
         assertEquals(
-                "Simulated email delivery failure for notification: 8",
+                "Brevo API unavailable",
                 exception.getMessage()
         );
 
-        // The notification was saved as PROCESSING before delivery failed
+        // Notification was saved as PROCESSING before delivery failed
         verify(notificationRepository, times(1)).save(notification);
 
-        // It must not be marked SENT
+        // Brevo was called
+        verify(brevoEmailService).sendEmail(
+                "retry-test@example.com",
+                "NotifyFlow - New Notification",
+                "Testing Brevo delivery failure"
+        );
+
+        // Notification must not be marked SENT
         assertEquals(
                 NotificationStatus.PROCESSING,
                 notification.getStatus()
         );
+
+        // Cache should not be evicted on this failure path
+        verifyNoInteractions(cacheManager);
     }
 }

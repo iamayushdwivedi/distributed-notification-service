@@ -7,19 +7,23 @@ import org.springframework.stereotype.Component;
 import com.ayush.notification.enums.NotificationStatus;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import com.ayush.notification.email.BrevoEmailService;
 
 @Component
 public class NotificationEventConsumer {
 
     private final NotificationRepository notificationRepository;
     private final CacheManager cacheManager;
+    private final BrevoEmailService brevoEmailService;
 
     public NotificationEventConsumer(
             NotificationRepository notificationRepository,
-            CacheManager cacheManager) {
+            CacheManager cacheManager,
+            BrevoEmailService brevoEmailService) {
 
         this.notificationRepository = notificationRepository;
         this.cacheManager = cacheManager;
+        this.brevoEmailService = brevoEmailService;
     }
 
     @KafkaListener(topics = "notification-events")
@@ -44,15 +48,11 @@ public class NotificationEventConsumer {
         notification.setStatus(NotificationStatus.PROCESSING);
         notificationRepository.save(notification);
 
-        System.out.println("Simulating delivery for notification: " + id);
-        System.out.println("Recipient: " + notification.getRecipient());
-        System.out.println("Channel: " + notification.getChannel());
-
-        if ("retry-test@example.com".equals(notification.getRecipient())) {
-            throw new RuntimeException(
-                    "Simulated email delivery failure for notification: " + id
-            );
-        }
+        brevoEmailService.sendEmail(
+                notification.getRecipient(),
+                "NotifyFlow - New Notification",
+                notification.getMessage()
+        );
 
         // Simulate successful delivery
         notification.setStatus(NotificationStatus.SENT);
