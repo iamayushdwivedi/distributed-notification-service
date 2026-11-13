@@ -8,8 +8,12 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import {
+  fetchNotifications,
+  type Notification,
+} from "./services/notificationApi";
 
 function App() {
   const [showForm, setShowForm] = useState(false);
@@ -17,6 +21,26 @@ function App() {
   const [channel, setChannel] = useState("EMAIL");
   const [message, setMessage] = useState("");
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalNotifications, setTotalNotifications] = useState(0);
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const data = await fetchNotifications();
+        setNotifications(data.content);
+        setTotalNotifications(data.totalElements);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadNotifications();
+  }, []);
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
       {/* Sidebar */}
@@ -193,7 +217,7 @@ function App() {
               <p className="text-sm text-slate-400">Total Notifications</p>
               <Bell className="h-5 w-5 text-blue-400" />
             </div>
-            <h3 className="mt-4 text-3xl font-bold">0</h3>
+            <h3 className="mt-4 text-3xl font-bold">{totalNotifications}</h3>
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -222,6 +246,15 @@ function App() {
         </div>
 
         {/* Recent Notifications */}
+        {loading && (
+          <p className="mt-4 text-slate-400">Loading notifications...</p>
+        )}
+
+        {error && (
+          <p role="alert" className="mt-4 text-rose-400">
+            Error: {error}
+          </p>
+        )}
         <section
           id="notifications"
           className="mt-8 overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
@@ -245,26 +278,7 @@ function App() {
               </thead>
 
               <tbody className="divide-y divide-slate-800">
-                {[
-                  {
-                    id: 15,
-                    recipient: "user@example.com",
-                    channel: "EMAIL",
-                    status: "SENT",
-                  },
-                  {
-                    id: 14,
-                    recipient: "admin@example.com",
-                    channel: "EMAIL",
-                    status: "PENDING",
-                  },
-                  {
-                    id: 13,
-                    recipient: "team@example.com",
-                    channel: "EMAIL",
-                    status: "FAILED",
-                  },
-                ].map((notification) => (
+                {notifications.map((notification) => (
                   <tr key={notification.id} className="hover:bg-slate-800/40">
                     <td className="px-6 py-4 text-slate-400">
                       #{notification.id}
