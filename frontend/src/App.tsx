@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   fetchNotifications,
+  createNotification,
   type Notification,
 } from "./services/notificationApi";
 
@@ -41,6 +42,17 @@ function App() {
 
     loadNotifications();
   }, []);
+  const sentCount = notifications.filter(
+    (notification) => notification.status === "SENT",
+  ).length;
+
+  const pendingCount = notifications.filter(
+    (notification) => notification.status === "PENDING",
+  ).length;
+
+  const failedCount = notifications.filter(
+    (notification) => notification.status === "FAILED",
+  ).length;
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
       {/* Sidebar */}
@@ -127,18 +139,31 @@ function App() {
                 role="status"
                 className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"
               >
-                Form validated successfully! API submission will be enabled
-                soon.
+                Notification request submitted successfully!
               </div>
             )}
             <form
               className="mt-6 space-y-5"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
 
-                console.log({ recipient, channel, message });
+                try {
+                  await createNotification({
+                    recipient,
+                    channel,
+                    message,
+                  });
 
-                setFormSubmitted(true);
+                  const updatedData = await fetchNotifications();
+
+                  setNotifications(updatedData.content);
+                  setTotalNotifications(updatedData.totalElements);
+
+                  setFormSubmitted(true);
+                } catch (err) {
+                  console.error("Failed to create notification:", err);
+                  alert("Failed to create notification. Check the console.");
+                }
               }}
             >
               {/* Recipient */}
@@ -225,7 +250,7 @@ function App() {
               <p className="text-sm text-slate-400">Sent</p>
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
-            <h3 className="mt-4 text-3xl font-bold">0</h3>
+            <h3 className="mt-4 text-3xl font-bold">{sentCount}</h3>
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -233,7 +258,7 @@ function App() {
               <p className="text-sm text-slate-400">Pending</p>
               <Clock3 className="h-5 w-5 text-amber-400" />
             </div>
-            <h3 className="mt-4 text-3xl font-bold">0</h3>
+            <h3 className="mt-4 text-3xl font-bold">{pendingCount}</h3>
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -241,7 +266,7 @@ function App() {
               <p className="text-sm text-slate-400">Failed</p>
               <XCircle className="h-5 w-5 text-rose-400" />
             </div>
-            <h3 className="mt-4 text-3xl font-bold">0</h3>
+            <h3 className="mt-4 text-3xl font-bold">{failedCount}</h3>
           </div>
         </div>
 

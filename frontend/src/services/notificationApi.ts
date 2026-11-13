@@ -25,3 +25,27 @@ export async function fetchNotifications(): Promise<NotificationPage> {
 
   return response.json();
 }
+
+export type CreateNotificationRequest = {
+  recipient: string;
+  message: string;
+  channel: string;
+};
+
+export async function createNotification(
+  notification: CreateNotificationRequest,
+): Promise<Notification> {
+  const response = await fetch(API_BASE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(notification),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create notification: ${response.status}`);
+  }
+
+  return response.json();
+}
